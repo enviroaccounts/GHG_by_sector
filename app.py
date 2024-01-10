@@ -11,14 +11,11 @@ def load_ghg_emissions_data():
 def prepare_ghg_emissions_bar_chart_data(data_df):
     """Prepares data for the GHG emissions horizontal bar chart."""
     # Exclude the 'Total' row
-    data_df = data_df[data_df['Year'] != 'Total (tCO2e)']
+    data_df = data_df[data_df['Sector'] != 'Total (tCO2e)']
     # Reshape the DataFrame for Plotly Express
-    # 'Year' column has sector names, and the headers of other columns are actual years
     df_melted = data_df.melt(id_vars='Sector', var_name='Year', value_name='Emissions')
     # Convert Emissions to numeric, removing any commas
     df_melted['Emissions'] = pd.to_numeric(df_melted['Emissions'].str.replace(',', ''), errors='coerce')
-    # Correctly rename the columns for clarity
-    df_melted.columns = ['Sector', 'Year', 'Emissions']
     return df_melted
 
 
