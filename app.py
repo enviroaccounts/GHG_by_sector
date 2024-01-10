@@ -1,46 +1,68 @@
 from dash import Dash, html, dcc
 import pandas as pd
-import plotly.graph_objects as go
+import plotly.express as px
 
-def load_forest_land_use_data():
-    """Loads forest land use change data."""
-    return pd.read_csv("static/data/LandUseChange_Forest_1990_2016.csv")
+def load_ghg_emissions_data():
+    """Loads GHG emissions data."""
+    data_df = pd.read_csv("static/data/GHG_emissions_by_sector.csv")
+    print(data_df)
+    return pd.read_csv("static/data/GHG_emissions_by_sector.csv")
 
-def prepare_forest_land_use_chart_data(data_df):
-    """Prepares data for the forest land use pie chart."""
-    land_use_data = data_df.iloc[0, 3:]  # land use columns start from the 4th column
-    labels = land_use_data.index.tolist()
-    values = land_use_data.values.tolist()
-    return labels, values
+def prepare_ghg_emissions_bar_chart_data(data_df):
+    """Prepares data for the GHG emissions horizontal bar chart."""
+    # Exclude the 'Total' row
+    data_df = data_df[data_df['Year'] != 'Total (tCO2e)']
+    # Reshape the DataFrame for Plotly Express
+    # 'Year' column has sector names, and the headers of other columns are actual years
+    df_melted = data_df.melt(id_vars='Sector', var_name='Year', value_name='Emissions')
+    # Convert Emissions to numeric, removing any commas
+    df_melted['Emissions'] = pd.to_numeric(df_melted['Emissions'].str.replace(',', ''), errors='coerce')
+    # Correctly rename the columns for clarity
+    df_melted.columns = ['Sector', 'Year', 'Emissions']
+    return df_melted
 
-def create_forest_land_use_pie_chart(labels, values):
-    """Creates a pie chart for forest land use data."""
-    return go.Figure(data=[go.Pie(labels=labels, values=values)])
 
-def setup_dash_layout(app, fig_pie_chart):
+
+def create_ghg_emissions_bar_chart(data_df):
+    """Creates a horizontal bar chart for GHG emissions data."""
+    fig = px.bar(data_df, x="Emissions", y="Year", color='Sector', orientation='h',
+                 hover_data={"Year": True, "Emissions": ':.2f', "Sector": True},
+                 height=400,
+                 title='GHG Emissions by Sector')
+
+    # Update x-axis labels and range
+    fig.update_xaxes(
+        tickvals=[-100000, -50000, 0, 50000, 100000, 150000, 200000, 250000],
+        ticktext=["-100,000", "-50,000", "0", "50,000", "100,000", "150,000", "200,000", "250,000"],
+        range=[-100000, 250000]
+    )
+
+    return fig
+
+
+
+
+def setup_dash_layout(app, fig_bar_chart):
     """Sets up the layout of the Dash app."""
     app.layout = html.Div(children=[
         html.Div([
-            dcc.Graph(id='forest-land-use-pie-chart', figure=fig_pie_chart)
+            dcc.Graph(id='ghg-emissions-bar-chart', figure=fig_bar_chart)
         ]),
-        html.Div([  
-            html.H3(id='forest-land-use-pie-chart-description',children='Land uses converted from forestland since 1990.')
-        ])
-    ],id='forest-land-use-pie-chart-layout')
+    ], id='ghg-emissions-bar-chart-layout')
 
 def create_app():
     """Creates and configures the Dash app."""
     app = Dash(__name__)
 
     # Load and prepare data
-    data_df = load_forest_land_use_data()
-    labels, values = prepare_forest_land_use_chart_data(data_df)
+    data_df = load_ghg_emissions_data()
+    df_melted = prepare_ghg_emissions_bar_chart_data(data_df)
 
-    # Create pie chart
-    fig_pie_chart = create_forest_land_use_pie_chart(labels, values)
+    # Create bar chart
+    fig_bar_chart = create_ghg_emissions_bar_chart(df_melted)
 
     # Setup layout
-    setup_dash_layout(app, fig_pie_chart)
+    setup_dash_layout(app, fig_bar_chart)
 
     return app
 
